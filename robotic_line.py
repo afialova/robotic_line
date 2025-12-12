@@ -1,19 +1,44 @@
-
+from collections import deque
 
 class Robot:
     def __init__(self, name, processing_time, supported_part):
         self.name = name
         self.processing_time = processing_time
         self.supported_part = supported_part
+        self.queue = deque()
+        self.current_part = None
+        self.time_left = 0
+        self.state = "idle"
+        self.processed_count = 0
 
     def add_part(self, part):
-        pass  
+        if part == self.supported_part:
+            self.queue.append(part)
+        else:
+            print(f"{self.name} is unable to process {part}.")
 
     def start_processing(self, part):
-        pass 
+        self.current_part = part
+        self.time_left = self.processing_time
+        self.state = "working"
 
     def tick(self, dt):
-        pass  
+        finished_part = None
+
+        if self.state == "working":
+            self.time_left -= dt
+            if self.time_left <= 0:
+                finished_part = self.current_part
+                self.current_part = None
+                self.state = "waiting"
+                self.processed_count += 1
+
+        if self.state == "waiting" and self.queue:
+            next_part = self.queue.popleft()
+            self.start_processing(next_part)
+
+        return finished_part
+
 
 
 class Welder(Robot):
@@ -53,4 +78,4 @@ if __name__ == "__main__":
     line.add_robot(Inspector())
     line.add_robot(Assembler())
 
-    print("Production line has been cretaed.")
+    print("Production line has been created.")
