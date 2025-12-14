@@ -1,10 +1,19 @@
 from collections import deque
 
+class Part:
+    def __init__(self, part_type):
+        self.part_type = part_type
+        self.stage = 0
+
+    def advance_stage(self):
+        self.stage += 1
+
+
 class Robot:
-    def __init__(self, name, processing_time, supported_part):
+    def __init__(self, name, processing_time, stage):
         self.name = name
         self.processing_time = processing_time
-        self.supported_part = supported_part
+        self.stage = stage
         self.queue = deque()
         self.current_part = None
         self.time_left = 0
@@ -12,10 +21,7 @@ class Robot:
         self.processed_count = 0
 
     def add_part(self, part):
-        if part == self.supported_part:
-            self.queue.append(part)
-        else:
-            print(f"{self.name} is unable to process {part}.")
+        self.queue.append(part)
 
     def start_processing(self, part):
         self.current_part = part
@@ -43,36 +49,41 @@ class Robot:
 
 class Welder(Robot):
     counter = 1
+    stage = 0
 
     def __init__(self):
         name = f"Welder {Welder.counter}"
         Welder.counter += 1
-        super().__init__(name, 5, "metal")
+        super().__init__(name, 5, Welder.stage)
 
 
 class Inspector(Robot):
     counter = 1
+    stage = 1
 
     def __init__(self):
         name = f"Inspector {Inspector.counter}"
         Inspector.counter += 1
-        super().__init__(name, 2, "metal")
+        super().__init__(name, 2, Inspector.stage)
 
 
 class Assembler(Robot):
     counter = 1
+    stage = 2
 
     def __init__(self):
         name = f"Assembler {Assembler.counter}"
         Assembler.counter += 1
-        super().__init__(name, 3, "assembled")
-
+        super().__init__(name, 3, Assembler.stage)
 
 
 
 class ProductionLine:
     def __init__(self):
         self.robots = []
+        self.parts = deque()
+        self.time = 0
+        self.log = []
 
     def add_robot(self, robot):
         self.robots.append(robot)
@@ -81,7 +92,20 @@ class ProductionLine:
         self.parts.append(part)
 
     def tick(self, dt=1):
-        pass
+        self.time += dt
+
+        for robot in self.robots:
+            for part in list(self.parts):
+                if part.stage == robot.stage:
+                    robot.add_part(part)
+                    self.parts.remove(part)
+                    break
+
+            finished_part = robot.tick(dt)
+            if finished_part:
+                finished_part.advance_stage()
+                self.parts.append(finished_part)
+
 
 
 if __name__ == "__main__":
