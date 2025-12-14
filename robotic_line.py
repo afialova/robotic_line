@@ -82,6 +82,7 @@ class ProductionLine:
     def __init__(self):
         self.robots = []
         self.parts = deque()
+        self.finished_parts = []
         self.time = 0
         self.log = []
 
@@ -101,10 +102,13 @@ class ProductionLine:
                     self.parts.remove(part)
                     break
 
-            finished_part = robot.tick(dt)
-            if finished_part:
-                finished_part.advance_stage()
-                self.parts.append(finished_part)
+            processed_part = robot.tick(dt)
+            if processed_part:
+                processed_part.advance_stage()
+                if processed_part.stage >= 3:
+                    self.finished_parts.append(processed_part)
+                else:
+                    self.parts.append(processed_part)
 
 
 
