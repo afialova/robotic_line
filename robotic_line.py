@@ -42,18 +42,31 @@ class Robot:
 
 
 class Welder(Robot):
-    def __init__(self, name):
+    counter = 1
+
+    def __init__(self):
+        name = f"Welder {Welder.counter}"
+        Welder.counter += 1
         super().__init__(name, 5, "metal")
 
 
 class Inspector(Robot):
-    def __init__(self, name):
+    counter = 1
+
+    def __init__(self):
+        name = f"Inspector {Inspector.counter}"
+        Inspector.counter += 1
         super().__init__(name, 2, "metal")
 
 
 class Assembler(Robot):
-    def __init__(self, name):
+    counter = 1
+
+    def __init__(self):
+        name = f"Assembler {Assembler.counter}"
+        Assembler.counter += 1
         super().__init__(name, 3, "assembled")
+
 
 
 
