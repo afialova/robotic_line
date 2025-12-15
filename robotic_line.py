@@ -2,10 +2,13 @@ from collections import deque
 import random
 
 class Part:
+    counter = 1
     def __init__(self, part_type):
         self.part_type = part_type
         self.stage = 0
         self.defective = False
+        self.id = f"ID-{Part.counter:04d}"
+        Part.counter += 1
 
     def advance_stage(self):
         self.stage += 1
@@ -70,6 +73,7 @@ class Inspector(Robot):
         name = f"Inspector {Inspector.counter}"
         Inspector.counter += 1
         super().__init__(name, 2, Inspector.stage)
+    
 
 
 class Assembler(Robot):
@@ -118,6 +122,7 @@ class ProductionLine:
                         self.log.append({
                             "time": self.time,
                             "robot": robot.name,
+                            "part_id": processed_part.id,
                             "part_type": processed_part.part_type,
                             "result": "zmetek"
                         })
@@ -126,6 +131,7 @@ class ProductionLine:
                 self.log.append({
                     "time": self.time,
                     "robot": robot.name,
+                    "part_id": processed_part.id,
                     "part_type": processed_part.part_type,
                     "stage": processed_part.stage,
                     "defective": processed_part.defective
