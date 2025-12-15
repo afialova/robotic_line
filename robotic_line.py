@@ -1,9 +1,11 @@
 from collections import deque
+import random
 
 class Part:
     def __init__(self, part_type):
         self.part_type = part_type
         self.stage = 0
+        self.defective = False
 
     def advance_stage(self):
         self.stage += 1
@@ -19,6 +21,7 @@ class Robot:
         self.time_left = 0
         self.state = "idle"
         self.processed_count = 0
+        self.idle_time = 0
 
     def add_part(self, part):
         self.queue.append(part)
@@ -29,12 +32,12 @@ class Robot:
         self.state = "working"
 
     def tick(self, dt):
-        finished_part = None
+        processed_part = None
 
         if self.state == "working":
             self.time_left -= dt
             if self.time_left <= 0:
-                finished_part = self.current_part
+                processed_part = self.current_part
                 self.current_part = None
                 self.state = "waiting"
                 self.processed_count += 1
@@ -42,8 +45,10 @@ class Robot:
         if self.state == "waiting" and self.queue:
             next_part = self.queue.popleft()
             self.start_processing(next_part)
+        elif self.state != "working":
+            self.idle_time += dt
 
-        return finished_part
+        return processed_part
 
 
 
@@ -83,6 +88,7 @@ class ProductionLine:
         self.robots = []
         self.parts = deque()
         self.finished_parts = []
+        self.scrap_parts = []
         self.time = 0
         self.log = []
 
@@ -104,13 +110,46 @@ class ProductionLine:
 
             processed_part = robot.tick(dt)
             if processed_part:
+                if isinstance(robot, Inspector):
+                    if random.random() < 0.10:
+                        processed_part.defective = True
+                        self.scrap_parts.append(processed_part)
+
+                        self.log.append({
+                            "time": self.time,
+                            "robot": robot.name,
+                            "part_type": processed_part.part_type,
+                            "result": "zmetek"
+                        })
+                        continue
                 processed_part.advance_stage()
+                self.log.append({
+                    "time": self.time,
+                    "robot": robot.name,
+                    "part_type": processed_part.part_type,
+                    "stage": processed_part.stage,
+                    "defective": processed_part.defective
+                })
                 if processed_part.stage >= 3:
                     self.finished_parts.append(processed_part)
                 else:
                     self.parts.append(processed_part)
 
+    def print_statistics(self):
+        print("**Aktuální stav výrobní linky**")
+        print(f"Provozní doba: {self.time}")
+        print(f"Počet hotových dílů: {len(self.finished_parts)}")
+        print(f"Počet zmetků: {len(self.scrap_parts)}")
 
+        for robot in self.robots:
+            print(f"{robot.name} - zpracováno: {robot.processed_count}, prostoje: {robot.idle_time}")
+
+        total_processed = len(self.finished_parts) + len(self.scrap_parts)
+        if total_processed > 0:
+            scrap_rate = len(self.scrap_parts) / total_processed * 100
+        else:
+            scrap_rate = 0
+        print(f"Zmetkovitost: {scrap_rate:.1f}%")
 
 if __name__ == "__main__":
     line = ProductionLine()
