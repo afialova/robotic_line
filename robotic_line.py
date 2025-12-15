@@ -25,6 +25,8 @@ class Robot:
         self.state = "idle"
         self.processed_count = 0
         self.idle_time = 0
+        self.breakdown_chance = 0.05
+        self.breakdown_time = 0
 
     def add_part(self, part):
         self.queue.append(part)
@@ -36,6 +38,22 @@ class Robot:
 
     def tick(self, dt):
         processed_part = None
+        event = None
+
+        if self.state == "broken":
+            self.breakdown_time -= dt
+            if self.breakdown_time <= 0:
+                self.state = "waiting" if self.queue else "idle"
+                event = "repaired"
+            else:
+                self.idle_time += dt
+                return None, event
+        elif self.state == "working" and random.random() < self.breakdown_chance:
+            self.state = "broken"
+            self.breakdown_time = random.randint(1, 5)
+            self.idle_time += dt
+            event = "breakdown"
+            return None, event
 
         if self.state == "working":
             self.time_left -= dt
@@ -51,7 +69,7 @@ class Robot:
         elif self.state != "working":
             self.idle_time += dt
 
-        return processed_part
+        return processed_part, event
 
 
 
@@ -106,42 +124,58 @@ class ProductionLine:
         self.time += dt
 
         for robot in self.robots:
-            for part in list(self.parts):
-                if part.stage == robot.stage:
-                    robot.add_part(part)
-                    self.parts.remove(part)
-                    break
+            processed_part, event = robot.tick(dt)
 
-            processed_part = robot.tick(dt)
-            if processed_part:
-                if isinstance(robot, Inspector):
-                    if random.random() < 0.10:
-                        processed_part.defective = True
-                        self.scrap_parts.append(processed_part)
-
-                        self.log.append({
-                            "time": self.time,
-                            "robot": robot.name,
-                            "part_id": processed_part.id,
-                            "part_type": processed_part.part_type,
-                            "result": "zmetek"
-                        })
-                        continue
-                processed_part.advance_stage()
+            if event == "breakdown":
                 self.log.append({
                     "time": self.time,
                     "robot": robot.name,
-                    "part_id": processed_part.id,
-                    "part_type": processed_part.part_type,
-                    "stage": processed_part.stage,
-                    "defective": processed_part.defective
+                    "event": "porucha",
+                    "duration": robot.breakdown_time
                 })
-                if processed_part.stage >= 3:
-                    self.finished_parts.append(processed_part)
+            elif event == "repaired":
+                self.log.append({
+                    "time": self.time,
+                    "robot": robot.name,
+                    "event": "opraven"
+                })
+
+            if robot.state != "broken" and robot.current_part is None:
+                for part in list(self.parts):
+                    if part.stage == robot.stage:
+                        robot.add_part(part)
+                        self.parts.remove(part)
+                        break
+                    
+            if processed_part:
+                if isinstance(robot, Inspector) and random.random() < 0.10:
+                    processed_part.defective = True
+                    self.scrap_parts.append(processed_part)
+                    self.log.append({
+                        "time": self.time,
+                        "robot": robot.name,
+                        "part_id": processed_part.id,
+                        "part_type": processed_part.part_type,
+                        "result": "zmetek"
+                    })
                 else:
-                    self.parts.append(processed_part)
+                    processed_part.advance_stage()
+                    self.log.append({
+                        "time": self.time,
+                        "robot": robot.name,
+                        "part_id": processed_part.id,
+                        "part_type": processed_part.part_type,
+                        "stage": processed_part.stage,
+                        "defective": processed_part.defective
+                    })
+                    if processed_part.stage >= 3:
+                        self.finished_parts.append(processed_part)
+                    else:
+                        self.parts.append(processed_part)
+
 
     def print_statistics(self):
+        broken_robots = []
         print("**Aktuální stav výrobní linky**")
         print(f"Provozní doba: {self.time}")
         print(f"Počet hotových dílů: {len(self.finished_parts)}")
@@ -156,6 +190,20 @@ class ProductionLine:
         else:
             scrap_rate = 0
         print(f"Zmetkovitost: {scrap_rate:.1f}%")
+
+
+        for robot in self.robots:
+            if robot.state == "broken":
+                broken_robots.append(robot)
+
+        if len(broken_robots) > 0:
+            names = []
+            for robot in broken_robots:
+                names.append(robot.name)
+
+            print("Roboti v poruše:", ", ".join(names))
+
+
 
 if __name__ == "__main__":
     line = ProductionLine()
