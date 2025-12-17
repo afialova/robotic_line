@@ -66,8 +66,11 @@ class Robot:
 
 # Konkrétní typy robotů
 class Welder(Robot):
+    counter = 1
     def __init__(self):
-        super().__init__("Welder", 5, 0)
+        name = f"Welder-{Welder.counter}"
+        Welder.counter += 1
+        super().__init__(name, 5, 0)
 
 class Inspector(Robot):
     def __init__(self):
@@ -158,6 +161,7 @@ class ProductionLine:
 # Spuštění simulace
 if __name__=="__main__":
     line = ProductionLine()
+    line.add_robot(Welder())
     line.add_robot(Welder())
     line.add_robot(Inspector())
     line.add_robot(Assembler())
