@@ -91,11 +91,9 @@ class ProductionLine:
         self.log = []
 
     def add_robot(self, robot):
-        # přidání robota na linku
         self.robots.append(robot)
 
     def add_part(self, part):
-        # vložení nového dílu do fronty
         self.stage_queues[0].append(part)
 
     def tick(self, dt=1):
@@ -112,16 +110,13 @@ class ProductionLine:
                         self.log.append({"time": self.time, "robot": robot.name, "part_id": current_part.id, "event": "finished_processing", "result": "zmetek"})
                     else:
                         current_part.advance_stage()
-                        # pokud je díl dokončen, uložíme do finished_parts
                         if current_part.stage >= 3:
                             self.finished_parts.append(current_part)
                             self.log.append({"time": self.time, "robot": robot.name, "part_id": current_part.id, "event": "finished_processing"})
                         else:
-                            # pokud díl není dokončn, přesouvá se do fronty další fáze
                             self.stage_queues[current_part.stage].append(current_part)
                             self.log.append({"time": self.time, "robot": robot.name, "part_id": current_part.id, "event": "finished_processing"})
 
-                # pokud je robot volný a ve frontě je díl, zahájí zpracování
                 if robot.state == "idle" and self.stage_queues[robot.stage]:
                     next_part = self.stage_queues[robot.stage].popleft()
                     robot.start_processing(next_part)
@@ -129,24 +124,15 @@ class ProductionLine:
                 else:
                     break
 
-    # Kontrola, zda jsou všechny díly dokončeny
     def all_parts_done(self):
-        total_remaining = 0
-        for queue in self.stage_queues.values():
-            total_remaining += len(queue)
-        robots_busy_or_broken = False
-        for robot in self.robots:
-            if robot.current_part is not None or robot.state == "broken":
-                robots_busy_or_broken = True
-                break
+        total_remaining = sum(len(q) for q in self.stage_queues.values())
+        robots_busy_or_broken = any(r.current_part is not None or r.state == "broken" for r in self.robots)
         return total_remaining == 0 and not robots_busy_or_broken
     
-    # Spuštění simulace, dokud nejsou všechny díly hotové
     def run_until_done(self):
         while not self.all_parts_done():
             self.tick(dt=1)
 
-    # Výpis statistik linky
     def print_statistics(self):
         print("**Aktuální stav výrobní linky**")
         print(f"Provozní doba: {self.time}")
@@ -158,7 +144,37 @@ class ProductionLine:
         scrap_rate = (len(self.scrap_parts)/total*100) if total else 0
         print(f"Zmetkovitost: {scrap_rate:.1f}%")
 
-# Spuštění simulace
+# základní testy - smoke tests
+def basic_tests():
+    print("\nZákladní testy pro otestování funkčnosti výrobní linky:")
+    test_line = ProductionLine()
+    welder1 = Welder()
+    welder2 = Welder()
+    inspector = Inspector()
+    assembler = Assembler()
+    
+    test_line.add_robot(welder1)
+    test_line.add_robot(welder2)
+    test_line.add_robot(inspector)
+    test_line.add_robot(assembler)
+
+    assert len(test_line.robots) == 4, "Roboti nebyli správně přidáni"
+
+    for i in range(10):
+        test_line.add_part(Part("Test Díl"))
+    assert sum(len(q) for q in test_line.stage_queues.values()) == 10, "Díly nebyly správně přidány"
+
+    test_line.run_until_done()
+    total_processed = len(test_line.finished_parts) + len(test_line.scrap_parts)
+    assert total_processed == 10, "Všechny díly nebyly zpracovány"
+
+    for robot in test_line.robots:
+        assert robot.processed_count >= 0, "Počet zpracovaných dílů nesmí být záporný"
+        assert robot.idle_time >= 0, "Idle time nesmí být záporný"
+
+    print("Všechny testy prošly!")
+
+# simulace výrobní linky
 if __name__=="__main__":
     line = ProductionLine()
     line.add_robot(Welder())
@@ -166,7 +182,6 @@ if __name__=="__main__":
     line.add_robot(Inspector())
     line.add_robot(Assembler())
 
-# vložení dílů do fronty na začátku výrobní linky
     for i in range(142):
         line.add_part(Part("Díl"))
 
@@ -176,3 +191,6 @@ if __name__=="__main__":
     print("\nUkázka záznamů v logu:")
     for entry in line.log[:20]:
         print(entry)
+
+    # Spuštění základních testů
+    basic_tests()
